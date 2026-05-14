@@ -29,6 +29,7 @@ import {
 	type ToolName,
 	withFileMutationQueue,
 } from "./tools/index.js";
+import { getVerdantConfig, wrapStreamFnWithVerdant } from "./verdant.js";
 
 export interface CreateAgentSessionOptions {
 	/** Working directory for project-local discovery. Default: process.cwd() */
@@ -374,6 +375,12 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		thinkingBudgets: settingsManager.getThinkingBudgets(),
 		maxRetryDelayMs: settingsManager.getProviderRetrySettings().maxRetryDelayMs,
 	});
+
+	// [verdant] wrap streamFn with LLM cache when configured
+	const verdantConfig = getVerdantConfig();
+	if (verdantConfig) {
+		agent.streamFn = wrapStreamFnWithVerdant(agent.streamFn, verdantConfig);
+	}
 
 	// Restore messages if session has existing data
 	if (hasExistingSession) {

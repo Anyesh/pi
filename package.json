@@ -30,6 +30,7 @@
 		"release:patch": "node scripts/release.mjs patch",
 		"release:minor": "node scripts/release.mjs minor",
 		"release:major": "node scripts/release.mjs major",
+		"postinstall": "node -e \"const fs=require('fs'),p=require('path');const s=process.env.VERDANT_NODE_PATH;if(!s)process.exit(0);const t=p.join(__dirname,'node_modules','verdant-node');if(!fs.existsSync(t)&&fs.existsSync(s)){fs.symlinkSync(s,t,'junction');console.log('[verdant] linked',s,'->',t)}\"",
 		"prepare": "husky"
 	},
 	"devDependencies": {

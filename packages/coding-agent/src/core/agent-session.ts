@@ -89,6 +89,7 @@ import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-promp
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.js";
 import { createAllToolDefinitions } from "./tools/index.js";
 import { createToolDefinitionFromAgentTool } from "./tools/tool-definition-wrapper.js";
+import { getVerdantConfig, mergeVerdantToolOptions } from "./verdant.js";
 
 // ============================================================================
 // Skill Block Parsing
@@ -2334,6 +2335,13 @@ export class AgentSession {
 		const autoResizeImages = this.settingsManager.getImageAutoResize();
 		const shellCommandPrefix = this.settingsManager.getShellCommandPrefix();
 		const shellPath = this.settingsManager.getShellPath();
+		const verdantConfig = getVerdantConfig();
+		const toolOpts = verdantConfig
+			? mergeVerdantToolOptions(
+					{ read: { autoResizeImages }, bash: { commandPrefix: shellCommandPrefix, shellPath } },
+					verdantConfig,
+				)
+			: { read: { autoResizeImages }, bash: { commandPrefix: shellCommandPrefix, shellPath } };
 		const baseToolDefinitions = this._baseToolsOverride
 			? Object.fromEntries(
 					Object.entries(this._baseToolsOverride).map(([name, tool]) => [
@@ -2341,10 +2349,7 @@ export class AgentSession {
 						createToolDefinitionFromAgentTool(tool),
 					]),
 				)
-			: createAllToolDefinitions(this._cwd, {
-					read: { autoResizeImages },
-					bash: { commandPrefix: shellCommandPrefix, shellPath },
-				});
+			: createAllToolDefinitions(this._cwd, toolOpts);
 
 		this._baseToolDefinitions = new Map(
 			Object.entries(baseToolDefinitions).map(([name, tool]) => [name, tool as ToolDefinition]),

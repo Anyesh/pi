@@ -173,6 +173,53 @@ Create provider file exporting:
 - `packages/ai/README.md`: Add to providers table, document options/auth, add env vars
 - `packages/ai/CHANGELOG.md`: Add entry under `## [Unreleased]`
 
+## Verdant Cache Integration
+
+This fork includes native verdant caching. All logic lives in `packages/coding-agent/src/core/verdant.ts`.
+
+### How It Works
+
+- Opt-in via `VERDANT_STORE_DIR` env var. Unset = zero behavior change.
+- If `verdant-node` NAPI binary is missing, warns once and continues without caching.
+- Tool operations (read, edit, write, grep, find, ls, bash) are wrapped with cached versions that use blake3 file-root revalidation.
+- LLM stream responses are cached by request content hash and replayed as synthesized event streams on cache hit.
+
+### Env Vars
+
+| Var | Required | Purpose |
+|-----|----------|---------|
+| `VERDANT_STORE_DIR` | Yes | Path to cache store directory. Enables caching when set. |
+| `VERDANT_NODE_PATH` | No | Absolute path to verdant-node NAPI package dir. Postinstall symlinks it into node_modules. |
+| `VERDANT_BASH_RULES` | No | Path to TOML file defining cacheable bash commands. Without this, bash calls are not cached. |
+| `VERDANT_VERIFY` | No | Set to `1` to run live LLM call alongside cache and compare results. |
+
+### Setup
+
+1. Clone the verdant repo and build the NAPI binary:
+   ```bash
+   git clone <verdant-repo-url> && cd verdant && cargo build -p verdant-node --release
+   ```
+2. Set `VERDANT_NODE_PATH` to the absolute path of `crates/verdant-node` in your verdant checkout.
+3. Run `npm install` in the pi repo — postinstall auto-symlinks verdant-node into node_modules.
+4. Set `VERDANT_STORE_DIR` and run pi.
+
+### Files Modified (vs upstream)
+
+These are the only upstream files touched. Keep changes minimal for clean rebases:
+
+- `package.json` — postinstall script for verdant-node symlink (env-configurable path)
+- `packages/coding-agent/src/core/sdk.ts` — 4 lines: wrap Agent.streamFn after construction
+- `packages/coding-agent/src/core/agent-session.ts` — 6 lines: merge cached tool options in `_buildRuntime`
+
+### Verdant Repo
+
+NAPI binary: `crates/verdant-node/verdant_node.node`
+Build: `cargo build -p verdant-node --release`
+
+### After Upstream Rebase
+
+Re-check the 4 modified files above. Conflicts will only occur if upstream changes the exact lines around our injection points (Agent construction in sdk.ts, createAllToolDefinitions call in agent-session.ts).
+
 ## Releasing
 
 **Lockstep versioning**: All packages always share the same version number. Every release updates all packages together.
